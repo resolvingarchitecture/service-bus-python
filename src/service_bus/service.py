@@ -1,4 +1,10 @@
-"""The unit of composition on the bus: a service."""
+"""The unit of composition on the bus: a service.
+
+Status, reports and the envelope come from ``ra-common`` (as ``service-bus-java``
+gets them from ``ra-common-java``). ``ServiceStatus`` is ra-common's 19-state
+enum; ``BaseService`` holds a :class:`ra_common.ServiceCore` for status
+tracking, observer notification and reporting.
+"""
 
 from __future__ import annotations
 
@@ -6,26 +12,22 @@ import logging
 import threading
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from enum import Enum
 from typing import Callable
 
-from seda_bus import Envelope
+from ra_common import Envelope, ServiceCore, ServiceReport, ServiceStatus
 
 log = logging.getLogger("service_bus")
 
 OnComplete = Callable[[Envelope], None]
 
-
-class ServiceStatus(Enum):
-    NOT_INITIALIZED = "not_initialized"
-    STARTING = "starting"
-    RUNNING = "running"
-    PAUSED = "paused"
-    #: degraded / self-reported broken - the bus restarts it
-    UNSTABLE = "unstable"
-    SHUTTING_DOWN = "shutting_down"
-    SHUTDOWN = "shutdown"
-    ERROR = "error"
+__all__ = [
+    "Service",
+    "BaseService",
+    "ServiceStatus",
+    "ServiceReport",
+    "ServiceContext",
+    "StatusObserver",
+]
 
 
 @dataclass
@@ -72,7 +74,8 @@ class Service(ABC):
 
 
 class BaseService(Service):
-    """Tracks status, exposes ``send``, turns lifecycle calls into transitions.
+    """Tracks status via a :class:`ra_common.ServiceCore`, exposes ``send``,
+    turns lifecycle calls into transitions.
 
     Override :meth:`handle` (and optionally :meth:`on_start` / :meth:`on_stop`).
     """
@@ -80,7 +83,7 @@ class BaseService(Service):
     name: str = "base-service"
 
     def __init__(self) -> None:
-        self._status = ServiceStatus.NOT_INITIALIZED
+        self.core = ServiceCore(type(self).__name__)
         self._ctx: ServiceContext | None = None
         self._observer: StatusObserver | None = None
         self._status_lock = threading.Lock()
@@ -89,9 +92,11 @@ class BaseService(Service):
         """Wired by :meth:`ServiceBus.register`."""
         self._ctx = ctx
         self._observer = observer
+        self.core.config = dict(ctx.config)
+        self.core.service_class_name = self.name
 
     def depends_on(self) -> list[str]:
-        return []
+        return list(self.core.services_dependent_upon)
 
     def start(self) -> bool:
         self._update_status(ServiceStatus.STARTING)
@@ -112,7 +117,10 @@ class BaseService(Service):
         self._update_status(ServiceStatus.RUNNING)
 
     def get_status(self) -> ServiceStatus:
-        return self._status
+        return self.core.status
+
+    def report(self) -> ServiceReport:
+        return self.core.report()
 
     # -- for subclasses ------------------------------------------------
 
@@ -134,15 +142,15 @@ class BaseService(Service):
 
     def _update_status(self, status: ServiceStatus) -> None:
         with self._status_lock:
-            if self._status is status:
+            if self.core.status is status:
                 return
-            self._status = status
+            self.core.status = status
         if self._observer is not None:
             try:
                 self._observer(self.name, status)
             except Exception:  # pragma: no cover - defensive
                 log.exception("status observer raised for %s", self.name)
 
-    #: alias so subclasses can ask for a restart without importing the enum path
+    #: ask the bus for a restart without importing the enum path
     def report_unstable(self) -> None:
         self._update_status(ServiceStatus.UNSTABLE)

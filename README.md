@@ -13,7 +13,7 @@ This is a Python port of the design in
 [`service-bus-java`](https://github.com/resolvingarchitecture/service-bus-java).
 
 ```python
-from seda_bus import Envelope
+from seda_bus import Envelope, make_envelope
 from service_bus import ServiceBus, BaseService
 
 
@@ -21,7 +21,7 @@ class EchoService(BaseService):
     name = "echo"
 
     def handle(self, env: Envelope) -> bool:
-        print(env.payload)
+        print(env.content())
         return True
 
 
@@ -33,9 +33,15 @@ with ServiceBus() as bus:                 # start() on enter, graceful_shutdown(
     transports = bus.find_running_services(MyProtocolService)   # by type
     net = bus.find_running_services(lambda s: s.name.startswith("net-"))  # by predicate
 
-    bus.send(Envelope(to="echo", payload="hello"))
-    bus.send(Envelope(to="echo", payload="hello"), on_complete=lambda e: print("done", e.id))
+    bus.send(make_envelope("echo", "hello"))
+    bus.send(make_envelope("echo", "hello"), on_complete=lambda e: print("done", e.id))
 ```
+
+The envelope, `ServiceStatus` (ra-common's 19-state enum) and `ServiceReport`
+come from [`ra-common`](https://github.com/resolvingarchitecture/ra-common-python),
+as `service-bus-java` gets them from `ra-common-java`. `BaseService` holds a
+`ra_common.ServiceCore`; `make_envelope(to, payload, slip=[...])` addresses a
+service by name.
 
 ### As a daemon
 

@@ -40,7 +40,7 @@ queues, the routing-slip engine. It has no notion of a "service".
                           _seda.publish(env)
 
 "name" is the registration key, the channel name, and the value a routing slip
-carries (`Envelope.to` / `Envelope.slip`).
+carries (its `DynamicRoutingSlip`, keyed by `route.service`).
 
 ## Differences from `service-bus-java` (and why)
 
@@ -50,9 +50,13 @@ carries (`Envelope.to` / `Envelope.slip`).
 | dependency-ordered auto-registration | `depends_on()` is advisory (warns) | can't build an unknown dependency without a factory; caller orders `register_and_start_services` |
 | `AppThread` per start/stop | `threading.Thread` per start/stop | same "async, join later" shape; `await_running` joins |
 | `findRunningServices(Class)` | `find_running_services(type_or_predicate)` | Python takes a class *or* a callable |
-| `ControlCommand` enum on the envelope | `headers["command"]` + `headers["service"]` | seda-bus envelopes carry a `headers` dict, not a typed command path |
+| `ControlCommand` enum on `commandPath` | `headers["command"]` + `headers["service"]` | ergonomic string headers rather than a typed command path |
 | `PersistDeadLetter` file with rotation | `seda.set_dead_letter_channel(source, dlq)` | seda-bus-python already models a dead-letter channel |
-| routing slip is a LIFO stack | seda-bus-python slip is FIFO | property of the underlying bus; the router pattern is unchanged |
+| `BaseService` from `ra-common-java` | `BaseService` holds a `ra_common.ServiceCore` | ra-common-python's `Service` uses `start(properties)` / `shutdown()`; service-bus keeps its no-arg `start()` / `stop()` and delegates status/report to `ServiceCore` |
+
+`ServiceStatus` and `ServiceReport` are ra-common's (the 19-state enum, same as
+`service-bus-java`); the envelope is `ra_common.Envelope`, and its routing slip
+is LIFO and keyed by `route.service`.
 
 ## Threading
 

@@ -1,7 +1,7 @@
 import threading
 import time
 
-from seda_bus import Envelope
+from seda_bus import Envelope, make_envelope
 
 from service_bus import BaseService, ServiceBus, ServiceStatus
 
@@ -50,7 +50,7 @@ def test_routes_envelope_and_fires_callback():
         bus.await_running(2.0, "recorder")
 
         done = threading.Event()
-        env = Envelope(to="recorder", payload="hi")
+        env = make_envelope("recorder")
         bus.send(env, on_complete=lambda _e: done.set())
         assert done.wait(3.0)
         assert env.id in rec.seen
@@ -64,7 +64,7 @@ def test_routing_slip_walks_services_in_order():
         bus.await_running(2.0, "a", "b")
 
         done = threading.Event()
-        env = Envelope(to="a", payload="x", slip=["b"])
+        env = make_envelope("a", slip=["b"])
         bus.send(env, on_complete=lambda _e: done.set())
         assert done.wait(3.0)
         assert env.id in a.seen
@@ -123,7 +123,7 @@ def test_control_command_over_the_bus():
         bus.register(rec)  # registered but not started
         assert not bus.is_running("recorder")
 
-        env = Envelope(to="recorder", payload=None,
-                       headers={"command": "start", "service": "recorder"})
+        env = make_envelope("recorder",
+                            headers={"command": "start", "service": "recorder"})
         bus.send(env)
         assert bus.await_running(2.0, "recorder")

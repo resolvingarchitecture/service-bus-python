@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "service-bus"
-version = "0.1.0"
+version = "0.2.0"
 description = "Service lifecycle management and discovery over a seda-bus"
 readme = "README.md"
 requires-python = ">=3.13"
@@ -17,7 +17,7 @@ classifiers = [
     "Intended Audience :: Developers",
     "Topic :: Software Development :: Libraries",
 ]
-dependencies = ["seda-bus"]
+dependencies = ["seda-bus", "ra-common"]
 
 [project.urls]
 Homepage = "https://resolvingarchitecture.io"
