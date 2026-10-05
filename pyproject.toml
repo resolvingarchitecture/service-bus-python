@@ -9,7 +9,7 @@ description = "Service lifecycle management and discovery over a seda-bus"
 readme = "README.md"
 requires-python = ">=3.13"
 license = { text = "MIT" }
-authors = [{ name = "Brian Taylor", email = "brian@resolvingarchitecture.dev" }]
+authors = [{ name = "Brian Taylor", email = "brian@resolvingarchitecture.io" }]
 keywords = ["seda", "service-bus", "microservice", "lifecycle", "message-bus"]
 classifiers = [
     "Programming Language :: Python :: 3.13",
@@ -20,7 +20,7 @@ classifiers = [
 dependencies = ["seda-bus", "ra-common"]
 
 [project.urls]
-Homepage = "https://resolvingarchitecture.dev"
+Homepage = "https://resolvingarchitecture.io"
 Repository = "https://github.com/resolvingarchitecture/service-bus-python"
 
 [project.optional-dependencies]
